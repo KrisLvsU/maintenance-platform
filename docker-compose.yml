@@ -24,7 +24,7 @@ services:
 
 
   maintenance-platform:
-    build: .
+    image: krishnardy/maintenance-platform:${IMAGE_TAG}
 
     container_name: maintenance-platform
 

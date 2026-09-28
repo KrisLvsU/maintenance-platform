@@ -57,3 +57,38 @@ jobs:
 
       - name: Push Docker image
         run: docker push krishnardy/maintenance-platform:${{ github.sha }}
+
+        deploy:
+          needs: build
+          runs-on: ubuntu-latest
+
+          steps:
+            - name: Deploy to EC2
+              uses: appleboy/ssh-action@v1.2.2
+              with:
+                host: ${{ secrets.EC2_HOST }}
+                username: ${{ secrets.EC2_USER }}
+                key: ${{ secrets.EC2_SSH_KEY }}
+
+                script: |
+                  cd /home/ubuntu/maintenance-platform
+
+                  export IMAGE_TAG=${{ github.sha }}
+
+                  docker compose pull maintenance-platform
+                  docker compose up -d maintenance-platform
+
+                  echo "Waiting for application..."
+
+                  for i in {1..30}; do
+                    if curl --fail http://localhost:8080/actuator/health; then
+                      echo "Application is healthy!"
+                      exit 0
+                    fi
+
+                    sleep 5
+                  done
+
+                  echo "Application failed health check"
+                  docker compose logs --tail=100 maintenance-platform
+                  exit 1
